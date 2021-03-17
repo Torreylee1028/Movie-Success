@@ -1,0 +1,308 @@
+---
+title: "Success of Movies"
+author: "Torrey Capobianco"
+university: "Bellevue University"
+class: "DSC 520" 
+date: "Fall 2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Movies often base their success off of revenue generated in the opening week. However, revenue cannot speak to the success of a movie, as there are often times that a the budget or money spent on the creation of the movie is higher than the revenue. In this analysis, we will look at what contributes to the success of a movie based on the film's profit.
+
+## The Data
+The original data was retrieved from Kaggle, compiled from The Movie Database. The data contained 20 variables, reporting 4803 cases. Through the data cleaning process, the data set was narrowed down to 8 variables, to include the variables of interest: ID, Genres, Production Companies, Revenue, Budget, Runtime, Release Date, and Voting Average. These variables were chosen for the following:
+•	Genres – does the genre of a movie have an effect on success?
+•	Production Companies – Do specific production companies have more success than others?
+•	Budget – does a higher budget add to the success of a movie?
+•	Runtime – if a movie is in theaters longer, does it contribute to higher profit?
+•	Release date – does the time of year matter in its success?
+•	Voting – does a movie’s viewer feedback add to the success of a film?
+
+Several new variables were created to aid in the analysis of the research question.  To look at the profitability of each movie, a new variable was needed to be created, titled "profit." This calculated the difference between the budget and revenue variables.  
+One feature that was to be looked at is if the time of year a movie was released plays a part in the success of a movie. The month from the release date was broken out into its own column. From here, the months were grouped by seasons. 
+•	Winter: November – January 
+•	Spring: February – April
+•	Summer: May – July
+•	Fall: August – October 
+By looking at the summary of the data frame, the top 5 most frequent genres in the set was revealed. A new variable was created to look at the top 5 which are in order: action, adventure, comedy, drama, and horror. 
+
+
+## Insights
+The data that was observed was non-parametric. From performing a correlation matrix between budget, runtime, vote average, and profit, it is interesting to note the findings between the variables. Runtime does not have a strong positive correlation with revenue, profit, or vote average. As well, the budget of a movie is not strongly correlated to the profit of a movie. As more money is spent, it doesn't necessarily mean that they will have a high profit. This can be visually viewed by the scatter plots, as some points dip into the negative numbers on the profit axis as the budget increases. Profit does show a strong correlation with revenue, as one would believe would account to the success of a movie.
+
+
+From viewing scatterplots, the regression lines all indicate that budget, runtime, and vote average have a positive relationship, however, with vote average likely being very minimal contribution to the profit due to the very low sloped line.
+
+When looking at budget vs profit by seasons, it is interesting to note that fall seems to be the least profitable. Summer and Winter reflect very similar regression lines, indicating that both those seasons are comparable to the higher profit of a movie when the budget increases. When looking at genre’s regression line, action followed by adventure have a stronger positive linear regression line with horror being the weakest. Lastly, looking at budget vs. profit by production company, Paramount comes in with the strongest linear regression line.
+
+By completing simple linear regression models, it is concluded that budget accounts for the most of the contribution to success (profit) of a movie, with production company following behind. Results of x predicting profit:
+Budget: 32.3% of variation in profit
+Run time: 4.9% of variation in profit
+Vote average: 4.8% of variation in profit
+Season: 3.3% of variation in profit
+Genre: 8.2% of variation in profit
+
+When predicting profit based on production company, it resulted in a negative adjusted r-squared.
+
+In a multiple linear regression model, the best fit model was predicting profit from budget, run time, vote average, and summer as the season. When adding the highest the genre action or production company Paramount Pictures to the multiple linear regression model, it did not improve the fit of the model. The best fit model produced a multiple R-squared of 0.3638 presenting that the variables accounted for 36.4% of the variability in predicting the profit of a movie. Although this is a low percentage, it was the highest that was fitted based on the variables that were observed. When splitting the data for a training model and a testing model, the root mean square error was high for both cases. Although the test model produced a lower number than the training model, indicating that the model was not overfitted, it is still concluded that this multiple linear regression model is not the best model to predict the profit of a movie.
+
+## Concluding Remarks to the Target Audience
+Through this analysis, it is observed that as the budget increases, there is the likelihood that the profit will increase as well. To have a successful movie, one can plan to release their film either in the summer months or winter, as that reveals to be the most successful time of year. The length of time the movie is in theaters does not account for a large variation in the increase of profit as well as the voting. The most successful genre appears to be action, but with all variables accounting toward what predicts the profitability of a movie, genre does not seem to have any impact in increasing the profit. Additional factors that were not researched have a large contribution to the profit a movie makes. However, based on this research, in terms of the production company, all have a fair game in creating a successful movie. 
+
+## Limitations
+With the data at hand, a multiple linear regression model of 36.4% accounted in predicting the profit of a movie. There is 63.6% of explanation that is not accounted for in this analysis. This percentage can include how much advertising for the movie was done and the impact it had on the viewership. Lead actors, directors, producers, as well as the franchise could also be factors that account for this variability. Since movies also grab to emotions, there is a possibility that there is not a perfectly fit model to the prediction of the success, as emotion is an anomaly that cannot be predicted. Overall, there is other research that needs to be completed to look at the success of a movie.
+
+
+# Analysis Process
+## Packages
+```{r, message=FALSE}
+library(jsonlite)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(car)
+library(caTools)
+```
+
+## Data
+```{r, warning=FALSE, message=FALSE}
+movies <- read_csv("tmdb_5000_movies.csv")
+```
+
+## Data Cleaning
+### Parsing JSON
+```{r, warning=FALSE}
+genres <- movies %>%
+  filter(nchar(genres)>2) %>%
+  mutate(js = lapply(genres, fromJSON)) %>%
+  unnest(js, .name_repair = "unique") %>%
+  select(id, title, genres=name) %>%
+  mutate_if(is.character, factor)
+
+production_companies <- movies %>%
+  filter(nchar(production_companies)>2) %>%
+  mutate(js = lapply(production_companies, fromJSON)) %>%
+  unnest(js, .name_repair = "unique") %>%
+  select(id, title, production_companies=name) %>%
+  mutate_if(is.character, factor)
+
+m1 <-
+  genres %>% 
+  group_by(id) %>% 
+  filter(row_number()==1)
+
+m2 <- 
+  production_companies %>%
+  group_by(id) %>%
+  filter(row_number()==1)
+
+movies2 <- merge(movies,m1, by="id")
+ 
+
+movies3 <- merge(movies2, m2, by="id")
+
+
+```
+
+### Select Variables
+```{r}
+moviesdf <- movies3[,c("id", "genres.y", "production_companies.y", "revenue", "budget", "runtime", "vote_average", "release_date")]
+
+summary(moviesdf)
+```
+
+
+## Uncovering New Information
+### Profit Variable
+
+```{r}
+moviesdf$profit <- moviesdf$revenue - moviesdf$budget
+moviesdf <- na.omit(moviesdf)
+```
+
+### Seasons
+```{r} 
+moviesdf$month <- month(ymd(moviesdf$release_date))
+
+moviesdf <- mutate(moviesdf, season = ifelse(month %in% 2:4, "spring", 
+                                 ifelse(month %in% 5:7, "summer",
+                                        ifelse(month %in% 8:10, "fall", "winter"))))
+
+moviesdf$season <- as.factor(moviesdf$season)
+
+moviesdf$summer <- 
+  grepl("summer", moviesdf$season) %>%
+  as.factor()
+```
+
+### Genres
+Top 5 most frequent genres in the data frame.
+```{r}
+moviesdf <- mutate(moviesdf, genre = ifelse(genres.y %in% "Action", "action",
+                                            ifelse(genres.y %in% "Adventure", "adventure",
+                                                   ifelse(genres.y %in% "Drama", "drama",
+                                                          ifelse(genres.y %in% "Comedy", "comedy",
+                                                                 ifelse(genres.y %in% "Horror", "horror", "other"))))))
+
+moviesdf$genre <- as.factor(moviesdf$genre)
+
+moviesdf$action <- 
+  grepl("Action", moviesdf$genres.y) %>%
+  as.factor()
+```
+
+### Production Companies
+Top 5 most frequent production companies in the data frame.
+```{r}
+moviesdf <- mutate(moviesdf, company = ifelse(production_companies.y %in% "Paramount Pictures", "paramount",
+                                            ifelse(production_companies.y %in% "Universal Pictures", "universal",
+                                                   ifelse(production_companies.y %in% "Columbia Pictures", "columbia",
+                                                          ifelse(production_companies.y %in% "Twentieth Century Fox Film Corporation", "fox",
+                                                                 ifelse(production_companies.y %in% "Walt Disney Pictures", "disney", "other"))))))
+
+moviesdf$company <- as.factor(moviesdf$company)
+
+moviesdf$paramount <-
+  grepl("Paramount Pictures", moviesdf$production_companies.y) %>%
+  as.factor()
+```
+
+
+## Plots
+
+### Q-Q Plots
+Looking at the below graphs, all four variables are non-parametric due to the curve in the line. 
+
+```{r, warning=FALSE}
+qplot(sample = moviesdf$profit, stat="qq") + labs(x = "theoretical", y = "sample", title = "Profit")
+qplot(sample = moviesdf$budget, stat="qq") + labs(x = "theoretical", y = "sample", title = "Budget")
+qplot(sample = moviesdf$runtime, stat="qq") + labs(x = "theoretical", y = "sample", title = "Run Time")
+qplot(sample = moviesdf$vote_average, stat = "qq") + labs(x = "theoretical", y = "sample", title = "Vote Average")
+```
+
+### Scatter Plots
+Scatter plots with regression line:
+
+```{r}
+ggplot(moviesdf, aes(x = runtime, y = profit)) + geom_point(position = "jitter", color = "dark red") + geom_smooth(method = lm) + labs(x = "Run Time", y = "Profit", title = "Movies: Run Time vs Profit")
+ggplot(moviesdf, aes(x = budget, y = profit)) + geom_point(position = "jitter", color = "dark blue") + geom_smooth(method = lm) + labs(x = "Budget", y = "Profit", title = "Movies: Budget vs Profit")
+ggplot(moviesdf, aes(x = vote_average, y = profit)) + geom_point(position = "jitter", color = "dark green") + geom_smooth(method = lm) + labs(x = "Vote Average", y = "Profit", title = "Movies: Vote Average vs Profit")
+
+ggplot(moviesdf, aes(x = budget, y = profit, color = season)) + geom_point(position = "jitter") +geom_smooth(method = lm) + labs(x = "Budget", y = "Profit", title = "Movies: Budget vs Profit by Season", color = "Season")
+
+ggplot(moviesdf, aes(x = budget, y = profit, color = genre)) + geom_point(position = "jitter") +geom_smooth(method = lm) + labs(x = "Budget", y = "Profit", title = "Movies: Budget vs Profit by Genre", color = "Genre")
+
+ggplot(moviesdf, aes(x = budget, y = profit, color = company)) + geom_point(position = "jitter") +geom_smooth(method = lm) + labs(x = "Budget", y = "Profit", title = "Movies: Budget vs Profit by Production Company", color = "Production Company")
+```
+
+
+
+## Correlation Table
+I wanted to look at a correlation matrix between the variables that are numbers since it will not work on factors. Looking at the structure, you can see which variables are numbers and which are factors. It is interesting to note that runtime does not have a strong positive correlation with revenue or profit, as I thought it would. As well, just as the budget of a movie is not strongly correlated to the profit of a movie. As more money is spent, it doesn't necessarily mean that they will have a high profit. This can be backed up by the scatter plots, as you can see that some points dip into the negative numbers on the profit axis as the budget increases.
+
+
+```{r}
+cor(moviesdf[, c("revenue", "budget", "runtime", "vote_average", "profit")], method = "kendall")
+```
+
+## Linear Models
+### Simple Linear Regression
+
+With budget predicting profit, budget accounts for 32.3% of variation in profit. When the budget increases by $1, the profit increases by $1.92. 
+```{r}
+profitlm1 <- lm(profit ~ budget, data = moviesdf) 
+summary(profitlm1) 
+```
+
+
+When run time predicts profit, it accounts for 4.9% of variation in profit. 
+```{r}
+profitlm2 <- lm(profit ~ runtime, data = moviesdf) 
+summary(profitlm2)
+```
+
+When vote average predicts profit, it accounts for 4.8% of variation in profit..
+
+```{r}
+profitlm3 <- lm(profit ~ vote_average, data = moviesdf) 
+summary(profitlm3) 
+```
+
+When season predicts profit, it accounts for 3.3% of variation in profit.
+```{r}
+profitlm4 <- lm(profit ~ season, data = moviesdf)
+summary(profitlm4)
+```
+
+
+When genre predicts profit, it accounts for 8.2% of variation in profit.
+```{r}
+profitlm5 <- lm(profit ~ genres.y, data = moviesdf) 
+summary(profitlm5) 
+```
+
+Predicting profit based production companies resulted in a negative adjusted R-squared.
+```{r}
+profitlm6 <- lm(profit ~ production_companies.y, data = moviesdf) 
+summary(profitlm6)
+```
+
+
+### Multiple Linear Regression Model
+```{r}
+multi_lm1 <- lm(profit ~ budget + runtime + vote_average + summer, data = moviesdf)
+summary(multi_lm1)
+
+multi_lm2 <- lm(profit ~ budget + runtime + vote_average + summer + action, data = moviesdf)
+summary(multi_lm2)
+
+```
+
+### Model Fit
+Comparing the fit of both models, adding the strongest regression genre action to the model did not significantly improve the fit from the first model. The first model will be used.
+```{r}
+anova(multi_lm1, multi_lm2)
+
+```
+
+
+### Multicollinearity Test
+There seems to be no collinearity within the data.
+```{r}
+vif(multi_lm1)
+1/vif(multi_lm1)
+mean(vif(multi_lm1))
+```
+
+## Machine Learning
+```{r}
+set.seed(42)
+rows <- sample(nrow(moviesdf))
+shuffled_moviesdf <- moviesdf[rows, ]
+
+split <- sample.split(shuffled_moviesdf, SplitRatio = .8)
+train_data <- subset(shuffled_moviesdf, split == "TRUE")
+test_data <- subset(shuffled_moviesdf, split == "FALSE")
+
+train_model <- lm(profit ~ budget + runtime + vote_average + summer, data = train_data)
+
+predict_model <- predict(train_model, test_data)
+
+
+p <- predict(multi_lm1, moviesdf)
+error_p <- p - moviesdf[["profit"]]
+sqrt(mean(error_p^2))
+
+error_test <- predict_model - test_data[["profit"]]
+sqrt(mean(error_test^2))
+```
+
+
+# Source 
+The Movie Database(TMDb) (2017). TMDB 5000 Movie Dataset. Kaggle. https://www.kaggle.com/tmdb/tmdb-movie-metadata#tmdb_5000_movies.csv
