@@ -1,8 +1,7 @@
 ---
 title: "Success of Movies"
 author: "Torrey Capobianco"
-university: "Bellevue University"
-class: "DSC 520" 
+university: "Bellevue University" 
 date: "Fall 2019"
 output: word_document
 ---
